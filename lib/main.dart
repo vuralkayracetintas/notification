@@ -1,9 +1,14 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:notification_example/firebase_options.dart';
 import 'notification_service.dart';
+import 'firebase_messaging_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await NotificationService().initialize();
+  await FirebaseMessagingService().initialize();
   runApp(const MyApp());
 }
 
@@ -34,11 +39,75 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
   final NotificationService _notificationService = NotificationService();
+  final FirebaseMessagingService _fcmService = FirebaseMessagingService();
+  String _fcmToken = 'Loading...';
+  bool _isSubscribedToAll = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFCMToken();
+  }
+
+  Future<void> _loadFCMToken() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    setState(() {
+      _fcmToken = _fcmService.fcmToken ?? 'Token not available';
+    });
+  }
+
+  Future<void> _toggleAllUsersSubscription() async {
+    try {
+      if (_isSubscribedToAll) {
+        await _fcmService.unsubscribeFromTopic('all_users');
+        setState(() => _isSubscribedToAll = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Unsubscribed from broadcast notifications'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        await _fcmService.subscribeToTopic('all_users');
+        setState(() => _isSubscribedToAll = true);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Subscribed to broadcast notifications'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error toggling subscription: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   void _incrementCounter() {
     setState(() {
       _counter++;
     });
+  }
+
+  Future<void> _copyTokenToClipboard() async {
+    if (_fcmService.fcmToken != null) {
+      // You can add clipboard functionality here
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Token: ${_fcmService.fcmToken}'),
+          duration: const Duration(seconds: 3),
+          backgroundColor: Colors.blue,
+        ),
+      );
+    }
   }
 
   Future<void> _sendNotification() async {
@@ -172,7 +241,98 @@ class _MyHomePageState extends State<MyHomePage> {
                 '$_counter',
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
+              // FCM Token Display
+              Card(
+                color: Colors.blue.shade50,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'FCM Token:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        _fcmToken,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: _copyTokenToClipboard,
+                              icon: const Icon(Icons.copy, size: 16),
+                              label: const Text('Show Token'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Broadcast Subscription Toggle
+              Card(
+                color: _isSubscribedToAll
+                    ? Colors.green.shade50
+                    : Colors.grey.shade200,
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isSubscribedToAll
+                            ? Icons.notifications_active
+                            : Icons.notifications_off,
+                        color: _isSubscribedToAll ? Colors.green : Colors.grey,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _isSubscribedToAll
+                                  ? 'Broadcast: ON'
+                                  : 'Broadcast: OFF',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              _isSubscribedToAll
+                                  ? 'Receiving notifications to all users'
+                                  : 'Not receiving broadcast notifications',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _isSubscribedToAll,
+                        onChanged: (value) => _toggleAllUsersSubscription(),
+                        activeColor: Colors.green,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: _sendNotification,
                 icon: const Icon(Icons.notifications),

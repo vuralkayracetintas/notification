@@ -43,3 +43,21 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase & Security - IMPORTANT!
+service_account.json
+**/google-services.json
+**/GoogleService-Info.plist
+get_access_token.js
+get_access_token.py
+node_modules/
+package-lock.json
+__pycache__/
+venv/
+env/
+postman_collection.json
+BROADCAST_GUIDE.md
+POSTMAN_GUIDE.md
+FCM_GUIDE.md
+IOS_APNS_FIX.md
+firebase.json

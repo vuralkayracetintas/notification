@@ -28,17 +28,20 @@ dependencies:
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <your-repo-url>
 cd notification_example
 ```
 
 2. Install dependencies:
+
 ```bash
 flutter pub get
 ```
 
 3. Run the app:
+
 ```bash
 flutter run
 ```
@@ -48,6 +51,7 @@ flutter run
 ### Android
 
 The following permissions are automatically configured in `AndroidManifest.xml`:
+
 - `POST_NOTIFICATIONS` - For Android 13+ notification permission
 - `SCHEDULE_EXACT_ALARM` - For exact scheduled notifications
 - `USE_EXACT_ALARM` - Alternative for exact alarms
@@ -57,6 +61,7 @@ The following permissions are automatically configured in `AndroidManifest.xml`:
 ### iOS
 
 The app includes proper iOS configuration in:
+
 - `Info.plist` - Background modes for notifications
 - `AppDelegate.swift` - Notification center delegate setup
 
@@ -65,13 +70,16 @@ Permissions are requested automatically when the app launches.
 ## Usage
 
 ### 1. Instant Notification
+
 Tap the "Send Instant Notification" button to receive an immediate notification.
 
 ### 2. Scheduled Notifications
+
 - **5 Seconds**: Tap the button and receive a notification after 5 seconds
 - **30 Seconds**: Tap the button and receive a notification after 30 seconds
 
 ### 3. Time-based Notification
+
 Tap the "Send Notification at 17:15" button to schedule a notification for 5:15 PM. If the time has already passed today, it will be scheduled for tomorrow.
 
 ## Code Structure
@@ -93,11 +101,13 @@ lib/
 ## Testing
 
 ### Test on Android
+
 ```bash
 flutter run -d android
 ```
 
 ### Test on iOS
+
 ```bash
 flutter run -d ios
 ```
@@ -113,11 +123,13 @@ flutter run -d ios
 ## Troubleshooting
 
 ### Notifications not showing on iOS?
+
 - Check Settings → Notifications → notification_example
 - Ensure "Allow Notifications" is enabled
 - Try restarting the app completely (not just hot reload)
 
 ### Notifications not showing on Android?
+
 - For Android 13+, ensure notification permission is granted
 - Check app notification settings in device settings
 - Verify that battery optimization is disabled for the app
