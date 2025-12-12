@@ -45,16 +45,34 @@ app.*.map.json
 /android/app/release
 
 # Firebase & Security - IMPORTANT!
+# NEVER commit these files - they contain private keys
 service_account.json
+backend_test/service_account.json
 **/google-services.json
 **/GoogleService-Info.plist
+.env
+*.p8
+*.p12
+*.mobileprovision
+
+# Access token scripts (contain credentials)
 get_access_token.js
 get_access_token.py
+
+# Node.js
 node_modules/
 package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
 __pycache__/
 venv/
 env/
+*.pyc
+
+# Optional documentation (may contain project-specific info)
 postman_collection.json
 BROADCAST_GUIDE.md
 POSTMAN_GUIDE.md

@@ -1,33 +1,80 @@
-# Flutter Local Notifications Example
+# Flutter Notification Example
 
-A comprehensive Flutter project demonstrating local notification implementation for both Android and iOS platforms. This app showcases instant notifications, scheduled notifications, and time-based notifications.
+A comprehensive Flutter project demonstrating local and remote (Firebase Cloud Messaging) notifications for both Android and iOS platforms.
 
-## Features
+## 🎯 Features
 
+### Local Notifications
 - ✅ **Instant Notifications** - Send notifications immediately
 - ⏰ **Scheduled Notifications** - Schedule notifications for 5 or 30 seconds later
-- 🕐 **Time-based Notifications** - Schedule notifications for specific times (e.g., 17:15)
-- 📱 **Cross-platform Support** - Works on both Android and iOS
-- 🔔 **Background Notifications** - Notifications work even when the app is closed
-- ⚙️ **Permission Handling** - Automatic permission requests for Android 13+ and iOS
-- 🌍 **Timezone Support** - Handles different timezones correctly
+- 🕐 **Time-based Notifications** - Schedule notifications for specific times
 
-## Screenshots
+### Remote Notifications (FCM)
+- 📨 **Push Notifications** - Firebase Cloud Messaging integration
+- 👥 **User-to-User Notifications** - Send invitations between users
+- 📢 **Broadcast Notifications** - Send to all users at once
+- 👥 **Multi-user Selection** - Select multiple recipients
+- 🎭 **Topic Subscriptions** - Subscribe to notification topics
 
-[Add screenshots of your app here]
+### Backend API
+- 🚀 **Node.js Server** - Express backend for notification management
+- 💾 **User Management** - Mock database for testing
+- 🔐 **Token Management** - FCM token registration and management
+- 📊 **Bulk Notifications** - Send to multiple users
 
-## Dependencies
+## 📱 Platform Support
 
-```yaml
-dependencies:
-  flutter_local_notifications: ^latest
-  timezone: ^latest
-  flutter_timezone: ^latest
+- ✅ Android (API 21+)
+- ✅ iOS (13.0+)
+- 🔔 Background & Foreground notifications
+- 📍 Notification when app is terminated
+
+## 🚀 Quick Start
+
+See [SETUP.md](SETUP.md) for detailed setup instructions.
+
+### Prerequisites
+- Flutter SDK (3.0+)
+- Node.js (16+)
+- Firebase account
+- iOS: Xcode 14+
+- Android: Android Studio
+
+### Basic Setup
+
+```bash
+# Clone repository
+git clone <your-repo-url>
+cd notification_example
+
+# Install Flutter dependencies
+flutter pub get
+
+# Install backend dependencies
+cd backend_test && npm install && cd ..
+
+# Run backend server
+cd backend_test && node server.js
+
+# Run app
+flutter run
 ```
 
-## Installation
+## 🔒 Security
 
-1. Clone the repository:
+⚠️ **IMPORTANT**: This repository does NOT include:
+- `service_account.json` (Firebase Admin credentials)
+- `google-services.json` (Android config)
+- `GoogleService-Info.plist` (iOS config)
+
+You must obtain these from your Firebase Console. See [SECURITY.md](SECURITY.md) for details.
+
+## 📚 Documentation
+
+- [Setup Guide](SETUP.md) - Complete setup instructions
+- [Security](SECURITY.md) - Security best practices
+
+## Dependencies
 
 ```bash
 git clone <your-repo-url>

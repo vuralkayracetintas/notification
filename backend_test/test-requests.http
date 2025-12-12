@@ -1,0 +1,108 @@
+### Health Check
+GET http://localhost:3000/
+
+###
+
+### Kullanıcıları Listele
+GET http://localhost:3000/api/users
+
+###
+
+### FCM Token Kaydet
+POST http://localhost:3000/api/register-token
+Content-Type: application/json
+
+{
+  "userId": "user1",
+  "fcmToken": "YOUR_FCM_TOKEN_HERE"
+}
+
+###
+
+### Basit Bildirim Gönder
+POST http://localhost:3000/api/send-notification
+Content-Type: application/json
+
+{
+  "userId": "user1",
+  "title": "Test Bildirimi 🔔",
+  "body": "Bu bir test mesajıdır",
+  "data": {
+    "screen": "home",
+    "type": "test"
+  }
+}
+
+###
+
+### Davetiye Gönder
+POST http://localhost:3000/api/send-invitation
+Content-Type: application/json
+
+{
+  "inviterId": "user1",
+  "invitedUserId": "user2",
+  "eventName": "Doğum günü partisi"
+}
+
+###
+
+### Mesaj Bildirimi
+POST http://localhost:3000/api/send-message
+Content-Type: application/json
+
+{
+  "senderId": "user1",
+  "recipientId": "user2",
+  "messageText": "Merhaba, nasılsın?"
+}
+
+###
+
+### Toplu Bildirim (Herkese)
+POST http://localhost:3000/api/send-bulk
+Content-Type: application/json
+
+{
+  "title": "📢 Önemli Duyuru",
+  "body": "Bu mesaj tüm kullanıcılara gönderildi",
+  "data": {
+    "type": "announcement",
+    "priority": "high"
+  }
+}
+
+###
+
+### Parametreli Bildirim - Hoş Geldin
+POST http://localhost:3000/api/send-notification
+Content-Type: application/json
+
+{
+  "userId": "user1",
+  "title": "Hoş geldin Ahmet! 👋",
+  "body": "Hesabın başarıyla oluşturuldu",
+  "data": {
+    "userName": "Ahmet Yılmaz",
+    "type": "welcome"
+  }
+}
+
+###
+
+### Parametreli Bildirim - Sipariş Durumu
+POST http://localhost:3000/api/send-notification
+Content-Type: application/json
+
+{
+  "userId": "user1",
+  "title": "Sipariş #12345 güncellendi",
+  "body": "Siparişiniz kargoya verildi 📦",
+  "data": {
+    "orderId": "12345",
+    "status": "shipped",
+    "type": "order_update"
+  }
+}
+
+###

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:notification_example/firebase_options.dart';
 import 'notification_service.dart';
 import 'firebase_messaging_service.dart';
+import 'backend_service.dart';
+import 'invitation_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,11 +44,13 @@ class _MyHomePageState extends State<MyHomePage> {
   final FirebaseMessagingService _fcmService = FirebaseMessagingService();
   String _fcmToken = 'Loading...';
   bool _isSubscribedToAll = true;
+  String _currentUserId = 'user1'; // Varsayılan kullanıcı
 
   @override
   void initState() {
     super.initState();
     _loadFCMToken();
+    _registerToken();
   }
 
   Future<void> _loadFCMToken() async {
@@ -54,6 +58,11 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _fcmToken = _fcmService.fcmToken ?? 'Token not available';
     });
+  }
+
+  Future<void> _registerToken() async {
+    // Backend'e token kaydet
+    await BackendService.registerFCMToken(_currentUserId);
   }
 
   Future<void> _toggleAllUsersSubscription() async {
@@ -228,159 +237,222 @@ class _MyHomePageState extends State<MyHomePage> {
 
         title: Text(widget.title),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            spacing: 20,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const Text('Button Count:', style: TextStyle(fontSize: 20)),
-              const SizedBox(height: 10),
-              Text(
-                '$_counter',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 20),
-              // FCM Token Display
-              Card(
-                color: Colors.blue.shade50,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'FCM Token:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SelectableText(
-                        _fcmToken,
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
+      body: ListView(
+        children: [
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  const Text('Button Count:', style: TextStyle(fontSize: 20)),
+                  const SizedBox(height: 10),
+                  Text(
+                    '$_counter',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 20),
+                  // FCM Token Display
+                  Card(
+                    color: Colors.blue.shade50,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: _copyTokenToClipboard,
-                              icon: const Icon(Icons.copy, size: 16),
-                              label: const Text('Show Token'),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Kullanıcı:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
                                 ),
                               ),
+                              DropdownButton<String>(
+                                value: _currentUserId,
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: 'user1',
+                                    child: Text('user1 (Ahmet)'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'user2',
+                                    child: Text('user2 (Mehmet)'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'user3',
+                                    child: Text('user3 (Ayşe)'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _currentUserId = value);
+                                    _registerToken();
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                          const Divider(),
+                          const Text(
+                            'FCM Token:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
+                          ),
+                          const SizedBox(height: 8),
+                          SelectableText(
+                            _fcmToken,
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _copyTokenToClipboard,
+                                  icon: const Icon(Icons.copy, size: 16),
+                                  label: const Text('Show Token'),
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              // Broadcast Subscription Toggle
-              Card(
-                color: _isSubscribedToAll
-                    ? Colors.green.shade50
-                    : Colors.grey.shade200,
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isSubscribedToAll
-                            ? Icons.notifications_active
-                            : Icons.notifications_off,
-                        color: _isSubscribedToAll ? Colors.green : Colors.grey,
+                  const SizedBox(height: 10),
+                  // Broadcast Subscription Toggle
+                  Card(
+                    color: _isSubscribedToAll
+                        ? Colors.green.shade50
+                        : Colors.grey.shade200,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          Icon(
+                            _isSubscribedToAll
+                                ? Icons.notifications_active
+                                : Icons.notifications_off,
+                            color: _isSubscribedToAll
+                                ? Colors.green
+                                : Colors.grey,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _isSubscribedToAll
+                                      ? 'Broadcast: ON'
+                                      : 'Broadcast: OFF',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  _isSubscribedToAll
+                                      ? 'Receiving notifications to all users'
+                                      : 'Not receiving broadcast notifications',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _isSubscribedToAll,
+                            onChanged: (value) => _toggleAllUsersSubscription(),
+                            activeColor: Colors.green,
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _isSubscribedToAll
-                                  ? 'Broadcast: ON'
-                                  : 'Broadcast: OFF',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              _isSubscribedToAll
-                                  ? 'Receiving notifications to all users'
-                                  : 'Not receiving broadcast notifications',
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Davetiye Gönder Butonu
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              InvitationScreen(currentUserId: _currentUserId),
                         ),
+                      );
+                    },
+                    icon: const Icon(Icons.send),
+                    label: const Text('📨 Davetiye Gönder'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
                       ),
-                      Switch(
-                        value: _isSubscribedToAll,
-                        onChanged: (value) => _toggleAllUsersSubscription(),
-                        activeColor: Colors.green,
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _sendNotification,
+                    icon: const Icon(Icons.notifications),
+                    label: const Text('Send Instant Notification'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: _sendNotification,
-                icon: const Icon(Icons.notifications),
-                label: const Text('Send Instant Notification'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 15,
-                  ),
-                ),
-              ),
 
-              ElevatedButton.icon(
-                onPressed: _sendScheduledNotification,
-                icon: const Icon(Icons.schedule),
-                label: const Text('Send Notification in 5 Seconds'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 15,
+                  ElevatedButton.icon(
+                    onPressed: _sendScheduledNotification,
+                    icon: const Icon(Icons.schedule),
+                    label: const Text('Send Notification in 5 Seconds'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _sendScheduledNotification2,
-                icon: const Icon(Icons.schedule),
-                label: const Text('Send Notification in 30 Seconds'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 15,
+                  ElevatedButton.icon(
+                    onPressed: _sendScheduledNotification2,
+                    icon: const Icon(Icons.schedule),
+                    label: const Text('Send Notification in 30 Seconds'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _customNotification,
-                icon: const Icon(Icons.schedule),
-                label: const Text('Send Notification at 17:15'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 15,
+                  ElevatedButton.icon(
+                    onPressed: _customNotification,
+                    icon: const Icon(Icons.schedule),
+                    label: const Text('Send Notification at 17:15'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _incrementCounter,
