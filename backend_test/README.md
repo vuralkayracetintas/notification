@@ -1,6 +1,6 @@
 # 🚀 Notification Backend Test Server
 
-Local test için basit Node.js backend servisi.
+MongoDB tabanlı Node.js backend servisi.
 
 ## 📦 Kurulum
 
@@ -9,6 +9,9 @@ cd backend_test
 
 # Dependencies yükle
 npm install
+
+# MongoDB'yi başlat
+brew services start mongodb-community
 
 # Service account JSON'ı kopyala
 cp ../service_account.json ./service_account.json
@@ -25,47 +28,86 @@ npm run dev
 ```
 
 Server: `http://localhost:3000`
+Swagger API Docs: `http://localhost:3000/api-docs`
 
-## 📋 Test Kullanıcıları
+## 🗄️ Database
 
-- **user1**: Ahmet Yılmaz (ahmet@example.com)
-- **user2**: Mehmet Demir (mehmet@example.com)
-- **user3**: Ayşe Kaya (ayse@example.com)
+- **MongoDB**: `mongodb://localhost:27017/notification_db`
+- **Collections**:
+  - `users` - Kullanıcı bilgileri
+  - `devices` - Cihaz kayıtları
+
+## 📋 Kullanıcı Yönetimi
+
+Artık hardcoded kullanıcılar yok! Kullanıcılar MongoDB'de dinamik olarak yönetiliyor.
 
 ## 🔌 API Endpoints
 
-### 1. Health Check
+### User Management
 
-```bash
-GET http://localhost:3000/
-```
-
-### 2. Kullanıcıları Listele
+#### 1. Kullanıcıları Listele
 
 ```bash
 GET http://localhost:3000/api/users
 ```
 
-### 3. FCM Token Kaydet
+#### 2. Yeni Kullanıcı Oluştur
+
+```bash
+POST http://localhost:3000/api/create-user
+Content-Type: application/json
+
+{
+  "name": "Ali Veli",
+  "email": "ali@example.com"
+}
+```
+
+#### 3. FCM Token Kaydet
 
 ```bash
 POST http://localhost:3000/api/register-token
 Content-Type: application/json
 
 {
-  "userId": "user1",
+  "userId": "65abc123def456789",  // MongoDB ObjectId
   "fcmToken": "YOUR_FCM_TOKEN_FROM_APP"
 }
 ```
 
-### 4. Basit Bildirim Gönder
+### Device Management
+
+#### 4. Device Kaydet
+
+```bash
+POST http://localhost:3000/api/register-device
+Content-Type: application/json
+
+{
+  "deviceId": "device-uuid-123",
+  "fcmToken": "YOUR_FCM_TOKEN",
+  "userId": "65abc123def456789",
+  "platform": "iOS",
+  "deviceInfo": "iPhone 15 Pro"
+}
+```
+
+#### 5. Kayıtlı Device'ları Listele
+
+```bash
+GET http://localhost:3000/api/devices
+```
+
+### Notification Endpoints
+
+#### 6. Basit Bildirim Gönder (User Bazlı)
 
 ```bash
 POST http://localhost:3000/api/send-notification
 Content-Type: application/json
 
 {
-  "userId": "user1",
+  "userId": "65abc123def456789",
   "title": "Test Bildirimi",
   "body": "Bu bir test mesajıdır",
   "data": {
@@ -74,33 +116,111 @@ Content-Type: application/json
 }
 ```
 
-### 5. Davetiye Gönder
+#### 7. Device'a Bildirim Gönder
+
+```bash
+POST http://localhost:3000/api/send-to-device
+Content-Type: application/json
+
+{
+  "deviceId": "device-uuid-123",
+  "title": "Cihaza Özel",
+  "body": "Bu bildirim sadece bu cihaza gönderildi",
+  "data": {}
+}
+```
+
+#### 8. Seçili Device'lara Toplu Bildirim (YENİ!)
+
+```bash
+POST http://localhost:3000/api/send-to-multiple-devices
+Content-Type: application/json
+
+{
+  "deviceIds": ["device-123", "device-456", "device-789"],
+  "title": "Seçili Cihazlara Bildirim",
+  "body": "Bu bildirim sadece seçili cihazlara gönderildi",
+  "data": {
+    "type": "selected"
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "totalDevices": 50,
+  "foundDevices": 48,
+  "notFoundDevices": 2,
+  "notFoundList": ["device-999", "device-888"],
+  "successCount": 47,
+  "failureCount": 1,
+  "batchCount": 1,
+  "batchSize": 500
+}
+```
+
+#### 9. Tüm Device'lara Toplu Bildirim
+
+```bash
+POST http://localhost:3000/api/send-bulk-devices
+Content-Type: application/json
+
+{
+  "title": "📢 Duyuru",
+  "body": "Bu mesaj tüm cihazlara gönderildi",
+  "data": {
+    "type": "announcement"
+  },
+  "platform": "iOS"  // Opsiyonel: "iOS" veya "Android"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "totalDevices": 2000,
+  "successCount": 1993,
+  "failureCount": 7,
+  "batchCount": 4,
+  "batchSize": 500,
+  "platform": "iOS"
+}
+```
+
+#### 10. Davetiye Gönder
+
+#### 10. Davetiye Gönder
 
 ```bash
 POST http://localhost:3000/api/send-invitation
 Content-Type: application/json
 
 {
-  "inviterId": "user1",
-  "invitedUserId": "user2",
+  "inviterId": "65abc123def456789",
+  "invitedUserId": "65abc987fed654321",
   "eventName": "Doğum günü partisi"
 }
 ```
 
-### 6. Mesaj Bildirimi
+#### 11. Mesaj Bildirimi
 
 ```bash
 POST http://localhost:3000/api/send-message
 Content-Type: application/json
 
 {
-  "senderId": "user1",
-  "recipientId": "user2",
+  "senderId": "65abc123def456789",
+  "recipientId": "65abc987fed654321",
   "messageText": "Merhaba, nasılsın?"
 }
 ```
 
-### 7. Toplu Bildirim (Herkese)
+#### 12. Toplu Bildirim (Tüm Kullanıcılara)
 
 ```bash
 POST http://localhost:3000/api/send-bulk
@@ -115,36 +235,87 @@ Content-Type: application/json
 }
 ```
 
+## 📊 Batch Processing
+
+Toplu bildirim endpoint'leri otomatik olarak **500'lük gruplar** halinde gönderir:
+
+- **2000 cihaz** = 4 batch (500+500+500+500)
+- **10,000 cihaz** = 20 batch
+- **Sınırsız** cihaz desteği
+
+**Console Output:**
+
+```
+📤 2000 cihaza 4 batch halinde gönderiliyor...
+   Batch 1/4: 500/500 başarılı
+   Batch 2/4: 498/500 başarılı
+   Batch 3/4: 500/500 başarılı
+   Batch 4/4: 495/500 başarılı
+✅ Toplu device bildirimi tamamlandı: 1993/2000 başarılı
+```
+
 ## 🧪 Test Senaryosu
 
-### 1. Flutter App'te FCM Token Al
-
-Flutter uygulamanızı çalıştırın ve FCM token'ı kopyalayın (ana ekranda gösteriliyor).
-
-### 2. Token'ı Backend'e Kaydet
+### Adım 1: Kullanıcı Oluştur
 
 ```bash
-curl -X POST http://localhost:3000/api/register-token \
+curl -X POST http://localhost:3000/api/create-user \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": "user1",
-    "fcmToken": "KOPYALADIĞINIZ_TOKEN"
+    "name": "Test User",
+    "email": "test@example.com"
   }'
 ```
 
-### 3. Bildirim Gönder
+Response'dan `userId`'yi kopyala (örn: `65abc123def456789`)
+
+### Adım 2: Flutter App'te Device Kaydet
+
+Flutter uygulamanızda UserSelectionScreen'den kullanıcıyı seç. Uygulama otomatik olarak:
+
+- FCM token alır
+- Device'ı kaydeder
+- MongoDB'ye kaydeder
+
+### Adım 3: Bildirim Gönder
+
+**Tek cihaza:**
 
 ```bash
-curl -X POST http://localhost:3000/api/send-notification \
+curl -X POST http://localhost:3000/api/send-to-device \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": "user1",
+    "deviceId": "YOUR_DEVICE_ID",
     "title": "Merhaba!",
     "body": "Backend test başarılı 🎉"
   }'
 ```
 
-### 4. Flutter App'te Bildirim Gelir ✅
+**Seçili cihazlara:**
+
+```bash
+curl -X POST http://localhost:3000/api/send-to-multiple-devices \
+  -H "Content-Type: application/json" \
+  -d '{
+    "deviceIds": ["device-1", "device-2", "device-3"],
+    "title": "Seçili Grup",
+    "body": "3 cihaza özel bildirim"
+  }'
+```
+
+**Tüm cihazlara:**
+
+```bash
+curl -X POST http://localhost:3000/api/send-bulk-devices \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Toplu Bildirim",
+    "body": "Herkese gönderildi",
+    "platform": "iOS"
+  }'
+```
+
+### Adım 4: Flutter App'te Bildirim Gelir ✅
 
 ## 💡 Postman ile Test
 
@@ -201,27 +372,69 @@ curl -X POST http://localhost:3000/api/send-notification \
 
 ## 🔍 Console Logları
 
-Server çalışırken her bildirim gönderiminde log göreceksiniz:
+Server çalışırken her işlem için detaylı log göreceksiniz:
 
 ```
-✅ Token kaydedildi: Ahmet Yılmaz
-✅ Bildirim gönderildi: Ahmet Yılmaz
-✅ Davetiye gönderildi: Ahmet Yılmaz → Mehmet Demir
+✅ MongoDB bağlantısı başarılı
+✅ Yeni kullanıcı oluşturuldu: Test User
+✅ Device kaydedildi: device-uuid-123 (iOS)
+✅ Token kaydedildi: Test User
+📤 50 cihaza 1 batch halinde gönderiliyor...
+   Batch 1/1: 48/50 başarılı
+✅ Toplu device bildirimi tamamlandı: 48/50 başarılı
+⚠️  2 device bulunamadı: device-999, device-888
 ```
 
-## ⚠️ Notlar
+## 📱 Flutter Features
 
-- `service_account.json` dosyası gerekli!
-- Port 3000 kullanılıyor (değiştirmek için `server.js`)
-- Mock database kullanıyor (gerçek DB yok)
-- Token'lar memory'de tutuluyor (restart'ta sıfırlanır)
+### User Selection Screen
 
-## 🎯 Sonraki Adımlar
+- MongoDB'den dinamik kullanıcı listesi
+- Yeni kullanıcı oluşturma formu
+- Avatar ve token durumu gösterimi
 
-Production için:
+### Main Screen Features
 
-- Gerçek database ekle (PostgreSQL, MongoDB)
-- Authentication ekle (JWT)
-- Rate limiting ekle
-- Logging sistemi ekle (Winston)
-- Environment variables düzenle
+1. **📢 Toplu Bildirim (Tüm Cihazlar)** - Tüm kayıtlı cihazlara
+2. **📱 Seçili Cihazlara Gönder** - Checkbox ile seçim
+3. **📨 Davetiye Gönder** - Kullanıcılar arası davetiye
+4. **💬 Mesaj Gönder** - Direkt mesaj bildirimi
+
+### Seçili Cihazlara Gönderim
+
+- Device listesinden checkbox ile seçim
+- "Tümünü Seç" butonu
+- Platform bilgisi (iOS/Android)
+- Detaylı sonuç raporu
+
+## ⚠️ Önemli Notlar
+
+- ✅ MongoDB gerekli (`brew services start mongodb-community`)
+- ✅ `service_account.json` dosyası gerekli
+- ✅ Port 3000 kullanılıyor
+- ✅ Swagger docs: `http://localhost:3000/api-docs`
+- ✅ Batch processing: Otomatik 500'lük gruplar
+- ✅ Sınırsız cihaz desteği
+
+## 🎯 Firebase Limits
+
+| Metod           | Limit     | Çözüm            |
+| --------------- | --------- | ---------------- |
+| `send()`        | 1 cihaz   | Tek gönderim     |
+| `sendEach()`    | 500 cihaz | Batch processing |
+| `sendToTopic()` | Sınırsız  | Topic kullan     |
+
+## 🚀 Production Checklist
+
+- [x] MongoDB entegrasyonu
+- [x] User management
+- [x] Device tracking
+- [x] Batch processing
+- [x] Error handling
+- [x] Detailed logging
+- [ ] Authentication (JWT)
+- [ ] Rate limiting
+- [ ] HTTPS/SSL
+- [ ] Environment variables
+- [ ] Docker container
+- [ ] Load balancing
