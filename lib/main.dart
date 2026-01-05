@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:notification_example/firebase_options.dart';
@@ -5,6 +6,8 @@ import 'notification_service.dart';
 import 'firebase_messaging_service.dart';
 import 'backend_service.dart';
 import 'invitation_screen.dart';
+import 'user_register_screen.dart';
+import 'user_selection_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,19 +23,26 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Notification App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const UserSelectionScreen(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({
+    super.key,
+    required this.title,
+    required this.selectedUserId,
+    required this.selectedUserName,
+  });
 
   final String title;
+  final String selectedUserId;
+  final String selectedUserName;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -45,12 +55,15 @@ class _MyHomePageState extends State<MyHomePage> {
   String _fcmToken = 'Loading...';
   String _deviceId = 'Loading...';
   bool _isSubscribedToAll = true;
-  String _currentUserId = 'user1'; // Varsayılan kullanıcı
+  late String _currentUserId;
+  late String _currentUserName;
   List<Map<String, dynamic>> _registeredDevices = [];
 
   @override
   void initState() {
     super.initState();
+    _currentUserId = widget.selectedUserId;
+    _currentUserName = widget.selectedUserName;
     _loadFCMToken();
     _registerToken();
     _registerDeviceToBackend();
@@ -76,11 +89,19 @@ class _MyHomePageState extends State<MyHomePage> {
     final token = _fcmService.fcmToken;
 
     if (deviceId != null && token != null) {
+      // Platform değerini backend'in kabul ettiği formatta gönder (dart:io kullanarak context'siz)
+      String platformValue = 'unknown';
+      if (Platform.isIOS) {
+        platformValue = 'iOS';
+      } else if (Platform.isAndroid) {
+        platformValue = 'Android';
+      }
+
       await BackendService.registerDevice(
         deviceId: deviceId,
         fcmToken: token,
         userId: _currentUserId,
-        platform: Theme.of(context).platform.toString(),
+        platform: platformValue,
         deviceInfo: 'Flutter Device',
       );
     }
@@ -309,14 +330,14 @@ class _MyHomePageState extends State<MyHomePage> {
                     },
                   );
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Bildirim ${device['deviceId']} cihazına gönderildi',
-                        ),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    // ScaffoldMessenger.of(context).showSnackBar(
+                    //   SnackBar(
+                    //     content: Text(
+                    //       'Bildirim ${device['deviceId']} cihazına gönderildi',
+                    //     ),
+                    //     backgroundColor: Colors.green,
+                    //   ),
+                    // );
                   }
                 },
               );
@@ -367,15 +388,15 @@ class _MyHomePageState extends State<MyHomePage> {
                 data: {'type': 'bulk', 'counter': _counter.toString()},
               );
               if (mounted && result != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      '✅ ${result['successCount']}/${result['totalDevices']} cihaza gönderildi',
-                    ),
-                    backgroundColor: Colors.green,
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
+                // ScaffoldMessenger.of(context).showSnackBar(
+                //   SnackBar(
+                //     content: Text(
+                //       '✅ ${result['successCount']}/${result['totalDevices']} cihaza gönderildi',
+                //     ),
+                //     backgroundColor: Colors.green,
+                //     duration: const Duration(seconds: 3),
+                //   ),
+                // );
               }
             },
             icon: const Icon(Icons.devices),
@@ -434,6 +455,126 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  // Seçili device'lara toplu bildirim gönder
+  Future<void> _sendToSelectedDevices() async {
+    if (_registeredDevices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ Kayıtlı cihaz bulunamadı'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Seçilebilir device listesi
+    final List<String> selectedDeviceIds = [];
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Cihaz Seç'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('${_registeredDevices.length} cihaz mevcut'),
+                    const SizedBox(height: 10),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _registeredDevices.length,
+                        itemBuilder: (context, index) {
+                          final device = _registeredDevices[index];
+                          final deviceId = device['deviceId'] as String;
+                          final platform = device['platform'] ?? 'unknown';
+                          final isSelected = selectedDeviceIds.contains(
+                            deviceId,
+                          );
+
+                          return CheckboxListTile(
+                            title: Text(
+                              deviceId.length > 20
+                                  ? '${deviceId.substring(0, 20)}...'
+                                  : deviceId,
+                            ),
+                            subtitle: Text('Platform: $platform'),
+                            value: isSelected,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  selectedDeviceIds.add(deviceId);
+                                } else {
+                                  selectedDeviceIds.remove(deviceId);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('İptal'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      selectedDeviceIds.clear();
+                      selectedDeviceIds.addAll(
+                        _registeredDevices.map((d) => d['deviceId'] as String),
+                      );
+                    });
+                  },
+                  child: const Text('Tümünü Seç'),
+                ),
+                ElevatedButton(
+                  onPressed: selectedDeviceIds.isEmpty
+                      ? null
+                      : () {
+                          Navigator.pop(context);
+                          _confirmAndSendToSelected(selectedDeviceIds);
+                        },
+                  child: Text('Gönder (${selectedDeviceIds.length})'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmAndSendToSelected(List<String> deviceIds) async {
+    final result = await BackendService.sendToMultipleDevices(
+      deviceIds: deviceIds,
+      title: 'Seçili Cihazlara Bildirim 📱',
+      body: '${deviceIds.length} cihaza özel bildirim gönderildi!',
+      data: {'type': 'selected_devices', 'counter': _counter.toString()},
+    );
+
+    if (mounted && result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ ${result['successCount']}/${result['foundDevices']} cihaza gönderildi\n'
+            '${result['notFoundDevices'] > 0 ? '⚠️  ${result['notFoundDevices']} cihaz bulunamadı' : ''}',
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -475,28 +616,16 @@ class _MyHomePageState extends State<MyHomePage> {
                                   fontSize: 14,
                                 ),
                               ),
-                              DropdownButton<String>(
-                                value: _currentUserId,
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: 'user1',
-                                    child: Text('user1 (Ahmet)'),
+                              Expanded(
+                                child: Text(
+                                  _currentUserName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.deepPurple,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  DropdownMenuItem(
-                                    value: 'user2',
-                                    child: Text('user2 (Mehmet)'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'user3',
-                                    child: Text('user3 (Ayşe)'),
-                                  ),
-                                ],
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() => _currentUserId = value);
-                                    _registerToken();
-                                  }
-                                },
+                                  textAlign: TextAlign.end,
+                                ),
                               ),
                             ],
                           ),
@@ -617,17 +746,32 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  // Toplu Bildirim Butonu
+                  // Toplu Bildirim Butonu (Tüm Device'lara)
                   ElevatedButton.icon(
                     onPressed: _sendBulkToAllDevices,
                     icon: const Icon(Icons.notifications_active),
-                    label: const Text('📢 Toplu Bildirim Gönder'),
+                    label: const Text('📢 Toplu Bildirim (Tüm Cihazlar)'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 15,
                       ),
                       backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Seçili Device'lara Toplu Bildirim
+                  ElevatedButton.icon(
+                    onPressed: _sendToSelectedDevices,
+                    icon: const Icon(Icons.phone_android),
+                    label: const Text('📱 Seçili Cihazlara Gönder'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
+                      ),
+                      backgroundColor: Colors.deepPurple,
                       foregroundColor: Colors.white,
                     ),
                   ),
@@ -651,6 +795,37 @@ class _MyHomePageState extends State<MyHomePage> {
                         vertical: 15,
                       ),
                       backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Yeni Kullanıcı Kayıt Butonu
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UserRegisterScreen(),
+                        ),
+                      );
+                      // Kullanıcı oluşturuldu ise listeyi yenile
+                      if (result == true && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Kullanıcı listesi güncellendi'),
+                            backgroundColor: Colors.blue,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('👤 Yeni Kullanıcı Kayıt'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
+                      ),
+                      backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                     ),
                   ),

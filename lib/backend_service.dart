@@ -9,6 +9,58 @@ class BackendService {
   // Production için değiştir:
   // static const String baseUrl = 'https://your-api.com/api';
 
+  // ===== USER YÖNETİMİ =====
+
+  /// Yeni kullanıcı oluştur
+  static Future<Map<String, dynamic>?> createUser({
+    required String name,
+    required String email,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/create-user'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'name': name, 'email': email}),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Kullanıcı oluşturuldu: ${data['user']['name']}');
+        return data;
+      } else {
+        final error = jsonDecode(response.body);
+        print('❌ Kullanıcı oluşturma hatası: ${error['error']}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Hata: $e');
+      return null;
+    }
+  }
+
+  /// Tüm kullanıcıları listele
+  static Future<List<Map<String, dynamic>>> getUsers() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/users'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return List<Map<String, dynamic>>.from(data['users']);
+      } else {
+        print('❌ Kullanıcı listesi hatası: ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ Hata: $e');
+      return [];
+    }
+  }
+
+  // ===== TOKEN YÖNETİMİ =====
+
   /// FCM Token'ı backend'e kaydet
   static Future<bool> registerFCMToken(String userId) async {
     try {
@@ -37,6 +89,8 @@ class BackendService {
       return false;
     }
   }
+
+  // ===== BİLDİRİM GÖNDERİMİ =====
 
   /// Davetiye gönder
   static Future<Map<String, dynamic>?> sendInvitation({
@@ -131,27 +185,6 @@ class BackendService {
     }
   }
 
-  /// Tüm kullanıcıları listele
-  static Future<List<Map<String, dynamic>>> getUsers() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/users'),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data['users']);
-      } else {
-        print('❌ Kullanıcı listesi hatası: ${response.body}');
-        return [];
-      }
-    } catch (e) {
-      print('❌ Hata: $e');
-      return [];
-    }
-  }
-
   // ===== DEVICE BAZLI BİLDİRİM METODLARi =====
 
   /// Device bilgilerini backend'e kaydet
@@ -222,6 +255,46 @@ class BackendService {
     } catch (e) {
       print('❌ Hata: $e');
       return false;
+    }
+  }
+
+  /// Birden fazla device'a toplu bildirim gönder
+  static Future<Map<String, dynamic>?> sendToMultipleDevices({
+    required List<String> deviceIds,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/send-to-multiple-devices'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'deviceIds': deviceIds,
+          'title': title,
+          'body': body,
+          'data': data ?? {},
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Toplu device bildirimi gönderildi');
+        print('   Toplam: ${responseData['totalDevices']}');
+        print('   Bulunan: ${responseData['foundDevices']}');
+        print('   Başarılı: ${responseData['successCount']}');
+        print('   Başarısız: ${responseData['failureCount']}');
+        if (responseData['notFoundDevices'] > 0) {
+          print('   ⚠️  Bulunamayan: ${responseData['notFoundDevices']}');
+        }
+        return responseData;
+      } else {
+        print('❌ Toplu device bildirim hatası: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Hata: $e');
+      return null;
     }
   }
 
