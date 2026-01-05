@@ -151,4 +151,138 @@ class BackendService {
       return [];
     }
   }
+
+  // ===== DEVICE BAZLI BİLDİRİM METODLARi =====
+
+  /// Device bilgilerini backend'e kaydet
+  static Future<bool> registerDevice({
+    required String deviceId,
+    required String fcmToken,
+    String? userId,
+    String? platform,
+    String? deviceInfo,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register-device'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'deviceId': deviceId,
+          'fcmToken': fcmToken,
+          'userId': userId,
+          'platform': platform,
+          'deviceInfo': deviceInfo,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Device kaydedildi: $deviceId');
+        print('   Kayıt zamanı: ${data['registeredAt']}');
+        return true;
+      } else {
+        print('❌ Device kaydetme hatası: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Hata: $e');
+      return false;
+    }
+  }
+
+  /// Belirli bir device'a bildirim gönder
+  static Future<bool> sendToDevice({
+    required String deviceId,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/send-to-device'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'deviceId': deviceId,
+          'title': title,
+          'body': body,
+          'data': data ?? {},
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Device\'a bildirim gönderildi');
+        print('   Device ID: $deviceId');
+        print('   Message ID: ${responseData['messageId']}');
+        return true;
+      } else {
+        print('❌ Device bildirim hatası: ${response.body}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ Hata: $e');
+      return false;
+    }
+  }
+
+  /// Kayıtlı tüm device'ları listele
+  static Future<List<Map<String, dynamic>>> getDevices() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/devices'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Toplam ${data['totalDevices']} device kayıtlı');
+        return List<Map<String, dynamic>>.from(data['devices']);
+      } else {
+        print('❌ Device listesi hatası: ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      print('❌ Hata: $e');
+      return [];
+    }
+  }
+
+  /// Tüm kayıtlı device'lara toplu bildirim gönder
+  static Future<Map<String, dynamic>?> sendBulkToDevices({
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+    String? platform, // 'iOS', 'Android' veya null (tümü)
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/send-bulk-devices'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'title': title,
+          'body': body,
+          'data': data ?? {},
+          if (platform != null) 'platform': platform,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print('✅ Toplu bildirim gönderildi');
+        print('   Toplam device: ${responseData['totalDevices']}');
+        print('   Başarılı: ${responseData['successCount']}');
+        print('   Başarısız: ${responseData['failureCount']}');
+        if (platform != null) {
+          print('   Platform: $platform');
+        }
+        return responseData;
+      } else {
+        print('❌ Toplu bildirim hatası: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Hata: $e');
+      return null;
+    }
+  }
 }

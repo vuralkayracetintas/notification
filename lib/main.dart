@@ -43,26 +43,54 @@ class _MyHomePageState extends State<MyHomePage> {
   final NotificationService _notificationService = NotificationService();
   final FirebaseMessagingService _fcmService = FirebaseMessagingService();
   String _fcmToken = 'Loading...';
+  String _deviceId = 'Loading...';
   bool _isSubscribedToAll = true;
   String _currentUserId = 'user1'; // Varsayılan kullanıcı
+  List<Map<String, dynamic>> _registeredDevices = [];
 
   @override
   void initState() {
     super.initState();
     _loadFCMToken();
     _registerToken();
+    _registerDeviceToBackend();
   }
 
   Future<void> _loadFCMToken() async {
     await Future.delayed(const Duration(milliseconds: 500));
+    final deviceId = await _fcmService.getDeviceId();
     setState(() {
       _fcmToken = _fcmService.fcmToken ?? 'Token not available';
+      _deviceId = deviceId ?? 'Device ID not available';
     });
   }
 
   Future<void> _registerToken() async {
-    // Backend'e token kaydet
+    // Backend'e token kaydet (user bazlı)
     await BackendService.registerFCMToken(_currentUserId);
+  }
+
+  Future<void> _registerDeviceToBackend() async {
+    // Backend'e device kaydet (device bazlı)
+    final deviceId = await _fcmService.getDeviceId();
+    final token = _fcmService.fcmToken;
+
+    if (deviceId != null && token != null) {
+      await BackendService.registerDevice(
+        deviceId: deviceId,
+        fcmToken: token,
+        userId: _currentUserId,
+        platform: Theme.of(context).platform.toString(),
+        deviceInfo: 'Flutter Device',
+      );
+    }
+  }
+
+  Future<void> _loadDevices() async {
+    final devices = await BackendService.getDevices();
+    setState(() {
+      _registeredDevices = devices;
+    });
   }
 
   Future<void> _toggleAllUsersSubscription() async {
@@ -229,6 +257,183 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<void> _sendToDevice() async {
+    if (_registeredDevices.isEmpty) {
+      await _loadDevices();
+    }
+
+    if (!mounted) return;
+
+    if (_registeredDevices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kayıtlı device bulunamadı'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Device seçimi için dialog göster
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Device Seç'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: _registeredDevices.length,
+            itemBuilder: (context, index) {
+              final device = _registeredDevices[index];
+              return ListTile(
+                leading: Icon(
+                  device['platform']?.contains('iOS') ?? false
+                      ? Icons.phone_iphone
+                      : Icons.phone_android,
+                ),
+                title: Text(device['deviceId'] ?? 'Unknown'),
+                subtitle: Text(
+                  'User: ${device['userId'] ?? 'N/A'}\n${device['platform'] ?? 'Unknown'}',
+                ),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await BackendService.sendToDevice(
+                    deviceId: device['deviceId'],
+                    title: 'Device Notification',
+                    body:
+                        'Bu bildirim ${device['deviceId']} cihazına gönderildi',
+                    data: {
+                      'type': 'device_specific',
+                      'counter': _counter.toString(),
+                    },
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Bildirim ${device['deviceId']} cihazına gönderildi',
+                        ),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendBulkToAllDevices() async {
+    if (_registeredDevices.isEmpty) {
+      await _loadDevices();
+    }
+
+    if (!mounted) return;
+
+    if (_registeredDevices.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kayıtlı device bulunamadı'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Platform seçimi için dialog göster
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Toplu Bildirim Gönder'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${_registeredDevices.length} kayıtlı cihaz bulundu'),
+            const SizedBox(height: 20),
+            const Text('Hangi platformlara gönderilsin?'),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              final result = await BackendService.sendBulkToDevices(
+                title: 'Toplu Bildirim 📢',
+                body: 'Bu bildirim tüm kayıtlı cihazlara gönderildi!',
+                data: {'type': 'bulk', 'counter': _counter.toString()},
+              );
+              if (mounted && result != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '✅ ${result['successCount']}/${result['totalDevices']} cihaza gönderildi',
+                    ),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.devices),
+            label: const Text('Tüm Cihazlar'),
+          ),
+          TextButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              final result = await BackendService.sendBulkToDevices(
+                title: 'iOS Bildirim 🍎',
+                body: 'Bu bildirim sadece iOS cihazlara gönderildi',
+                platform: 'iOS',
+                data: {'type': 'bulk_ios', 'counter': _counter.toString()},
+              );
+              if (mounted && result != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '✅ ${result['successCount']}/${result['totalDevices']} iOS cihaza gönderildi',
+                    ),
+                    backgroundColor: Colors.blue,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.phone_iphone),
+            label: const Text('Sadece iOS'),
+          ),
+          TextButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              final result = await BackendService.sendBulkToDevices(
+                title: 'Android Bildirim 🤖',
+                body: 'Bu bildirim sadece Android cihazlara gönderildi',
+                platform: 'Android',
+                data: {'type': 'bulk_android', 'counter': _counter.toString()},
+              );
+              if (mounted && result != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '✅ ${result['successCount']}/${result['totalDevices']} Android cihaza gönderildi',
+                    ),
+                    backgroundColor: Colors.green,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.phone_android),
+            label: const Text('Sadece Android'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -297,13 +502,29 @@ class _MyHomePageState extends State<MyHomePage> {
                           ),
                           const Divider(),
                           const Text(
+                            'Device ID:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          SelectableText(
+                            _deviceId,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.blue,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
                             'FCM Token:',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 4),
                           SelectableText(
                             _fcmToken,
                             style: const TextStyle(fontSize: 11),
@@ -381,6 +602,36 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
                   const SizedBox(height: 20),
+                  // Device'a Bildirim Gönder Butonu
+                  ElevatedButton.icon(
+                    onPressed: _sendToDevice,
+                    icon: const Icon(Icons.phone_android),
+                    label: const Text('📱 Device\'a Bildirim Gönder'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
+                      ),
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Toplu Bildirim Butonu
+                  ElevatedButton.icon(
+                    onPressed: _sendBulkToAllDevices,
+                    icon: const Icon(Icons.notifications_active),
+                    label: const Text('📢 Toplu Bildirim Gönder'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
+                      ),
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   // Davetiye Gönder Butonu
                   ElevatedButton.icon(
                     onPressed: () {

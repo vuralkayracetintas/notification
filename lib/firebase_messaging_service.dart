@@ -1,14 +1,18 @@
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:io';
 import 'notification_service.dart';
 
 // Background message handler must be top-level function
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('Handling background message: ${message.messageId}');
-  print('Title: ${message.notification?.title}');
-  print('Body: ${message.notification?.body}');
-  print('Data: ${message.data}');
+  debugPrint('Handling background message: ${message.messageId}');
+  debugPrint('Title: ${message.notification?.title}');
+  debugPrint('Body: ${message.notification?.body}');
+  debugPrint('Data: ${message.data}');
 }
 
 class FirebaseMessagingService {
@@ -31,7 +35,7 @@ class FirebaseMessagingService {
           return token;
         }
       } catch (e) {
-        print('Attempt ${i + 1} failed to get FCM token: $e');
+        debugPrint('Attempt ${i + 1} failed to get FCM token: $e');
         if (i < maxRetries - 1) {
           await Future.delayed(Duration(seconds: i + 2));
         }
@@ -51,7 +55,7 @@ class FirebaseMessagingService {
             provisional: false,
           );
 
-      print('User granted permission: ${settings.authorizationStatus}');
+      debugPrint('User granted permission: ${settings.authorizationStatus}');
 
       // Wait a bit for APNS token on iOS
       await Future.delayed(const Duration(milliseconds: 1000));
@@ -59,16 +63,16 @@ class FirebaseMessagingService {
       // Get FCM token with retry logic
       _fcmToken = await _getTokenWithRetry();
       subscribeToTopic('general'); // Subscribe to a default topic
-      print('FCM Token: $_fcmToken');
+      debugPrint('FCM Token: $_fcmToken');
     } catch (e) {
-      print('Error initializing FCM: $e');
+      debugPrint('Error initializing FCM: $e');
       // Try to get token later
       Future.delayed(const Duration(seconds: 3), () async {
         try {
           _fcmToken = await _firebaseMessaging.getToken();
-          print('FCM Token (delayed): $_fcmToken');
+          debugPrint('FCM Token (delayed): $_fcmToken');
         } catch (e) {
-          print('Failed to get token after retry: $e');
+          debugPrint('Failed to get token after retry: $e');
         }
       });
     }
@@ -76,7 +80,7 @@ class FirebaseMessagingService {
     // Listen to token refresh
     _firebaseMessaging.onTokenRefresh.listen((newToken) {
       _fcmToken = newToken;
-      print('FCM Token refreshed: $newToken');
+      debugPrint('FCM Token refreshed: $newToken');
       // Send token to your server here
     });
 
@@ -111,10 +115,10 @@ class FirebaseMessagingService {
   }
 
   void _handleForegroundMessage(RemoteMessage message) {
-    print('Received foreground message: ${message.messageId}');
-    print('Title: ${message.notification?.title}');
-    print('Body: ${message.notification?.body}');
-    print('Data: ${message.data}');
+    debugPrint('Received foreground message: ${message.messageId}');
+    debugPrint('Title: ${message.notification?.title}');
+    debugPrint('Body: ${message.notification?.body}');
+    debugPrint('Data: ${message.data}');
 
     // Show local notification when app is in foreground
     if (message.notification != null) {
@@ -127,14 +131,14 @@ class FirebaseMessagingService {
   }
 
   void _handleMessageOpenedApp(RemoteMessage message) {
-    print('Notification tapped: ${message.messageId}');
-    print('Data: ${message.data}');
+    debugPrint('Notification tapped: ${message.messageId}');
+    debugPrint('Data: ${message.data}');
 
     // Handle navigation based on notification data
     // Example: Navigate to specific screen based on data
     if (message.data.containsKey('screen')) {
       String screen = message.data['screen'];
-      print('Navigate to screen: $screen');
+      debugPrint('Navigate to screen: $screen');
       // Add your navigation logic here
     }
   }
@@ -143,9 +147,9 @@ class FirebaseMessagingService {
   Future<void> subscribeToTopic(String topic) async {
     try {
       await _firebaseMessaging.subscribeToTopic(topic);
-      print('Subscribed to topic: $topic');
+      debugPrint('Subscribed to topic: $topic');
     } catch (e) {
-      print('Error subscribing to topic: $e');
+      debugPrint('Error subscribing to topic: $e');
     }
   }
 
@@ -153,9 +157,9 @@ class FirebaseMessagingService {
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
       await _firebaseMessaging.unsubscribeFromTopic(topic);
-      print('Unsubscribed from topic: $topic');
+      debugPrint('Unsubscribed from topic: $topic');
     } catch (e) {
-      print('Error unsubscribing from topic: $e');
+      debugPrint('Error unsubscribing from topic: $e');
     }
   }
 
@@ -164,9 +168,42 @@ class FirebaseMessagingService {
     try {
       await _firebaseMessaging.deleteToken();
       _fcmToken = null;
-      print('FCM token deleted');
+      debugPrint('FCM token deleted');
     } catch (e) {
-      print('Error deleting token: $e');
+      debugPrint('Error deleting token: $e');
+    }
+  }
+
+  // Get unique device ID
+  Future<String?> getDeviceId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? deviceId = prefs.getString('device_id');
+
+      if (deviceId == null) {
+        // Generate new device ID
+        final deviceInfo = DeviceInfoPlugin();
+
+        if (Platform.isIOS) {
+          final iosInfo = await deviceInfo.iosInfo;
+          deviceId =
+              iosInfo.identifierForVendor ??
+              'ios_${DateTime.now().millisecondsSinceEpoch}';
+        } else if (Platform.isAndroid) {
+          final androidInfo = await deviceInfo.androidInfo;
+          deviceId = androidInfo.id;
+        } else {
+          deviceId = 'unknown_${DateTime.now().millisecondsSinceEpoch}';
+        }
+
+        // Save to SharedPreferences
+        await prefs.setString('device_id', deviceId);
+      }
+
+      return deviceId;
+    } catch (e) {
+      debugPrint('Error getting device ID: $e');
+      return null;
     }
   }
 }

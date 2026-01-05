@@ -1,0 +1,71 @@
+### Device Notification Test Requests
+
+@baseUrl = http://localhost:3000/api
+
+### 1. Device Kaydı (Device Register)
+POST {{baseUrl}}/register-device
+Content-Type: application/json
+
+{
+  "deviceId": "test-device-001",
+  "fcmToken": "YOUR_FCM_TOKEN_HERE",
+  "userId": "user1",
+  "platform": "iOS",
+  "deviceInfo": "iPhone 15 Pro"
+}
+
+### 2. Kayıtlı Device'ları Listele
+GET {{baseUrl}}/devices
+
+### 3. Belirli Device'a Bildirim Gönder
+POST {{baseUrl}}/send-to-device
+Content-Type: application/json
+
+{
+  "deviceId": "test-device-001",
+  "title": "Test Notification",
+  "body": "Bu device'a özel bir bildirim!",
+  "data": {
+    "type": "test",
+    "priority": "high"
+  }
+}
+
+### 4. Farklı Device'a Bildirim
+POST {{baseUrl}}/send-to-device
+Content-Type: application/json
+
+{
+  "deviceId": "test-device-002",
+  "title": "Önemli Bildirim",
+  "body": "Bu mesaj sadece senin cihazına gönderildi",
+  "data": {
+    "screen": "details",
+    "itemId": "123"
+  }
+}
+
+### 5. Server Status
+GET http://localhost:3000/
+
+### KARŞILAŞTIRMA: User Bazlı vs Device Bazlı
+
+### User Bazlı (Eski Yöntem) - User ID ile
+POST {{baseUrl}}/send-notification
+Content-Type: application/json
+
+{
+  "userId": "user1",
+  "title": "User Notification",
+  "body": "Bu user1'in tüm cihazlarına gider (eğer aynı user ID kullanan birden fazla cihaz varsa)"
+}
+
+### Device Bazlı (Yeni Yöntem) - Device ID ile
+POST {{baseUrl}}/send-to-device
+Content-Type: application/json
+
+{
+  "deviceId": "test-device-001",
+  "title": "Device Notification",
+  "body": "Bu sadece bu cihaza gider, user ID'den bağımsız"
+}
