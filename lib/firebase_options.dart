@@ -65,5 +65,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'notification-use-case-vkc.firebasestorage.app',
     iosBundleId: 'com.vkcode.notificationtest.base',
   );
-
 }

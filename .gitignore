@@ -50,6 +50,8 @@ service_account.json
 backend_test/service_account.json
 **/google-services.json
 **/GoogleService-Info.plist
+firebase_options.dart
+lib/firebase_options.dart
 .env
 *.p8
 *.p12
