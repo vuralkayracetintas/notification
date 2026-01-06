@@ -206,4 +206,9 @@ class FirebaseMessagingService {
       return null;
     }
   }
+
+  Future<void> saveTopic(String topic) async {
+    final result = await _firebaseMessaging.subscribeToTopic(topic);
+    return result;
+  }
 }
