@@ -48,21 +48,7 @@ class DefaultFirebaseOptions {
         );
     }
   }
-
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBXBOLYQwYcP2rSG8kYbKGG85DoFKILGyU',
-    appId: '1:1001020663248:android:920ae0a4727ee4d00b05d5',
-    messagingSenderId: '1001020663248',
-    projectId: 'notification-use-case-vkc',
-    storageBucket: 'notification-use-case-vkc.firebasestorage.app',
-  );
-
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBcFdHATibcRHF5Cwgi2OnbtLOkbTtqTzs',
-    appId: '1:1001020663248:ios:797491e601ad1e340b05d5',
-    messagingSenderId: '1001020663248',
-    projectId: 'notification-use-case-vkc',
-    storageBucket: 'notification-use-case-vkc.firebasestorage.app',
-    iosBundleId: 'com.vkcode.notificationtest.base',
-  );
 }
+
+
+/// helloe
